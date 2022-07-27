@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 from fastapi import FastAPI, Request, Depends
@@ -8,6 +9,8 @@ from fastapi.responses import JSONResponse
 from api import router
 from api.home.home import home_router
 from core.config import config
+from core.db import Base, session
+from core.db.session import engines
 from core.exceptions import CustomException
 from core.fastapi.dependencies import Logging
 from core.fastapi.middlewares import (
@@ -16,6 +19,8 @@ from core.fastapi.middlewares import (
     SQLAlchemyMiddleware,
 )
 from core.helpers.cache import Cache, RedisBackend, CustomKeyMaker
+
+logger = logging.getLogger(__name__)
 
 
 def init_routers(app_: FastAPI) -> None:
@@ -86,3 +91,33 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+@app.on_event("startup")
+async def startup_event():
+    from app.coupon.domain.coupon import Coupon  # noqa
+    from app.user.domain.user import User  # noqa
+    from app.user.domain.user_coupon import UserCoupon  # noqa
+
+    engine = engines["writer"]
+    engine.begin()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    user = User(name="hide", password="1212")
+    coupon = Coupon(name="Discount-2000", price=2000, quantity=100)
+    session.add(user)
+    session.add(coupon)
+    await session.commit()
+
+    logging.info("Create all tables")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    engine = engines["writer"]
+    engine.begin()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    logging.info("Drop all tables")

@@ -29,7 +29,10 @@ fileConfig(config.config_file_name)
 
 # For auto generate schemas
 from core.config import config
-from app.user.models import *
+from app.user.domain.user import User
+from app.user.domain.user_coupon import UserCoupon
+from app.coupon.domain.coupon import Coupon
+from core.db import Base
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
