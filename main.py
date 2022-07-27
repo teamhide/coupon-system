@@ -27,6 +27,7 @@ def main(env: str, debug: bool):
         port=config.APP_PORT,
         reload=True if config.ENV != "production" else False,
         workers=1,
+        log_level="debug",
     )
 
 

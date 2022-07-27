@@ -98,26 +98,33 @@ async def startup_event():
     from app.coupon.domain.coupon import Coupon  # noqa
     from app.user.domain.user import User  # noqa
     from app.user.domain.user_coupon import UserCoupon  # noqa
+    from core.helpers.redis import redis
 
     engine = engines["writer"]
-    engine.begin()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        engine.begin()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception:
+        return
 
-    user = User(name="hide", password="1212")
+    for i in range(100):
+        user = User(name=f"user-{i + 1}", password="1212")
+        session.add(user)
     coupon = Coupon(name="Discount-2000", price=2000, quantity=100)
-    session.add(user)
     session.add(coupon)
     await session.commit()
-
     logging.info("Create all tables")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     engine = engines["writer"]
-    engine.begin()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    try:
+        engine.begin()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+    except Exception:
+        return
 
     logging.info("Drop all tables")
