@@ -67,21 +67,19 @@ class CouponService:
 
         coupon_key = f"{self.COUPON_KEY}:{coupon_id}"
         async with redis.pipeline(transaction=True) as pipe:
-            remain_count, is_obtain = (
+            current_count, is_obtain = (
                 await pipe.scard(coupon_key).sadd(coupon_key, user_id).execute()
             )
 
-        logger.info(f"Remain:: {remain_count}")
+        logger.info(f"Current:: {current_count}")
         logger.info(f"is_obtain:: {is_obtain}")
 
-        if remain_count >= self.COUPON_COUNT:
-            # await redis.srem(coupon_key, user_id)
+        if current_count >= self.COUPON_COUNT:
             raise OutOfStockException
 
         if is_obtain == 0:
             raise AlreadyObtainException
 
-        # Decrease coupon quantity
         coupon.quantity = Coupon.quantity - 1
         session.add(coupon)
         user_coupon = UserCoupon(
