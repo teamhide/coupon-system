@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Optional, NoReturn
 
@@ -54,11 +55,15 @@ class CouponService:
         1. One user can only own one coupon for the same coupon.
         2. Coupons cannot be obtained if inventory does not exist.
         """
-        user = await self._get_user_by_id(user_id=user_id)
+        user: Optional[User]
+        coupon: Optional[Coupon]
+        user, coupon = await asyncio.gather(
+            self._get_user_by_id(user_id=user_id),
+            self._get_coupon_by_id(coupon_id=coupon_id),
+        )
         if not user:
             raise UserNotFoundException
 
-        coupon = await self._get_coupon_by_id(coupon_id=coupon_id)
         if not coupon:
             raise CouponNotFoundException
 
@@ -74,9 +79,14 @@ class CouponService:
         logger.info(f"Current:: {current_count}")
         logger.info(f"is_obtain:: {is_obtain}")
 
+        # Check if remain quantity is available
         if current_count >= self.COUPON_COUNT:
+            if is_obtain == 1:
+                await redis.srem(coupon_key, user_id)
+
             raise OutOfStockException
 
+        # Case of already obtained
         if is_obtain == 0:
             raise AlreadyObtainException
 
