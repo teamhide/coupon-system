@@ -105,7 +105,7 @@ async def startup_event():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-        for i in range(100):
+        for i in range(500):
             user = User(name=f"user-{i + 1}", password="1212")
             session.add(user)
 
